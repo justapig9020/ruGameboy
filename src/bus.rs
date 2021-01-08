@@ -12,6 +12,8 @@ const CATRIDGE_START: u16 = 0x0000;
 const CATRIDGE_END:   u16 = 0x7fff;
 const RAM_START:      u16 = 0xc000;
 const RAM_END:        u16 = 0xdfff;
+const ECHO_RAM_START: u16 = 0xe000;
+const ECHO_RAM_END:   u16 = 0xfdff;
 const UNUSABLE_START: u16 = 0xfea0;
 const UNUSABLE_END:   u16 = 0xfeff;
 const HRAM_START:     u16 = 0xff80;
@@ -135,6 +137,14 @@ pub struct Bus {
     pub joypad: Joypad,
 }
 
+fn addr_mapping(addr: u16) -> u16 {
+    let mut off = 0;
+    if ECHO_RAM_START <= addr && addr <= ECHO_RAM_END {
+        off = ECHO_RAM_START - RAM_START;
+    }
+    addr - off
+}
+
 impl Bus {
     pub fn new(binary: Vec<u8>) -> Self {
         let catridge = Memory::new(0, binary, Permission::ReadOnly);
@@ -175,6 +185,8 @@ impl Bus {
     }
 
     fn load(&self, addr: u16) -> Result<u8, ()> {
+        let addr = addr_mapping(addr);
+
         match self.find_device(addr) {
             Some(dev) => dev.load(addr),
             None => match addr {
@@ -219,6 +231,8 @@ impl Bus {
     }
 
     fn store(&mut self, addr: u16, value: u8) -> Result<(), ()> {
+        let addr = addr_mapping(addr);
+
         match self.find_device_mut(addr) {
             Some(dev) => dev.store(addr, value),
             None => match addr {
