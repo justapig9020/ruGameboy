@@ -8,8 +8,8 @@ use num_derive::FromPrimitive;
 use log::{error, info};
 
 /// memory map of LR35902, xxx_START to xxx_END inclusive
-const CATRIDGE_START: u16 = 0x0000;
-const CATRIDGE_END:   u16 = 0x7fff;
+const CARTRIDGE_START: u16 = 0x0000;
+const CARTRIDGE_END:   u16 = 0x7fff;
 const RAM_START:      u16 = 0xc000;
 const RAM_END:        u16 = 0xdfff;
 const UNUSABLE_START: u16 = 0xfea0;
@@ -125,7 +125,7 @@ pub trait Device {
 }
 
 pub struct Bus {
-    catridge: Memory,
+    cartridge: Memory,
     pub gpu: Gpu,
     pub timer: Timer,
     ram: Memory,
@@ -137,9 +137,9 @@ pub struct Bus {
 
 impl Bus {
     pub fn new(binary: Vec<u8>) -> Self {
-        let catridge = Memory::new(0, binary, Permission::ReadOnly);
+        let cartridge = Memory::new(0, binary, Permission::ReadOnly);
         Self {
-            catridge: catridge,
+            cartridge: cartridge,
             gpu: Gpu::new(),
             timer: Timer::new(),
             ram: Memory::new_empty(RAM_START as usize, (RAM_END - RAM_START + 1) as usize, Permission::Normal),
@@ -162,7 +162,7 @@ impl Bus {
 
     fn find_device(&self, addr: u16) -> Option<&dyn Device> {
         match addr {
-            CATRIDGE_START ..= CATRIDGE_END => Some(&self.catridge),
+            CARTRIDGE_START ..= CARTRIDGE_END => Some(&self.cartridge),
             VRAM_START ..= VRAM_END => Some(&self.gpu),
             RAM_START ..= RAM_END => Some(&self.ram),
             OAM_START ..= OAM_END => Some(&self.gpu),
@@ -212,7 +212,7 @@ impl Bus {
             HRAM_START ..= HRAM_END => Some(&mut self.hram),
             TIMER_START ..= TIMER_END => Some(&mut self.timer),
             JOYPAD_ADDR => Some(&mut self.joypad),
-            CATRIDGE_START ..= CATRIDGE_END => Some(&mut self.catridge),
+            CARTRIDGE_START ..= CARTRIDGE_END => Some(&mut self.cartridge),
             UNUSABLE_START ..= UNUSABLE_END => Some(&mut self.unusable),
             _ => return None,
         }
