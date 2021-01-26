@@ -2,6 +2,7 @@ use crate::memory::{Memory, Permission};
 use crate::gpu::{Gpu, LCDC, VRAM_START, VRAM_END, OAM_START, OAM_END};
 use crate::timer::{Timer, TIMER_START, TIMER_END};
 use crate::joypad::{Joypad, JOYPAD_ADDR};
+use crate::cartridge::cartridge_factory;
 
 use num_traits::FromPrimitive;
 use num_derive::FromPrimitive;
@@ -125,7 +126,7 @@ pub trait Device {
 }
 
 pub struct Bus {
-    cartridge: Memory,
+    cartridge: Box<dyn Device>,
     pub gpu: Gpu,
     pub timer: Timer,
     ram: Memory,
@@ -137,9 +138,8 @@ pub struct Bus {
 
 impl Bus {
     pub fn new(binary: Vec<u8>) -> Self {
-        let cartridge = Memory::new(0, binary, Permission::ReadOnly);
         Self {
-            cartridge: cartridge,
+            cartridge: cartridge_factory(0, binary),
             gpu: Gpu::new(),
             timer: Timer::new(),
             ram: Memory::new_empty(RAM_START as usize, (RAM_END - RAM_START + 1) as usize, Permission::Normal),
@@ -162,7 +162,7 @@ impl Bus {
 
     fn find_device(&self, addr: u16) -> Option<&dyn Device> {
         match addr {
-            CARTRIDGE_START ..= CARTRIDGE_END => Some(&self.cartridge),
+            CARTRIDGE_START ..= CARTRIDGE_END => Some(&*self.cartridge),
             VRAM_START ..= VRAM_END => Some(&self.gpu),
             RAM_START ..= RAM_END => Some(&self.ram),
             OAM_START ..= OAM_END => Some(&self.gpu),
@@ -212,7 +212,7 @@ impl Bus {
             HRAM_START ..= HRAM_END => Some(&mut self.hram),
             TIMER_START ..= TIMER_END => Some(&mut self.timer),
             JOYPAD_ADDR => Some(&mut self.joypad),
-            CARTRIDGE_START ..= CARTRIDGE_END => Some(&mut self.cartridge),
+            CARTRIDGE_START ..= CARTRIDGE_END => Some(&mut *self.cartridge),
             UNUSABLE_START ..= UNUSABLE_END => Some(&mut self.unusable),
             _ => return None,
         }

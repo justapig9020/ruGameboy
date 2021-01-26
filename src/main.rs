@@ -16,6 +16,7 @@ mod instruction;
 mod bus;
 mod memory;
 mod vm;
+mod cartridge;
 mod timer;
 mod joypad;
 
