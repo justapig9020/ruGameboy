@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::prelude::*;
 use crate::bus::Device;
 use crate::memory::{Memory, Permission};
 use log::{info, error};
@@ -10,42 +8,32 @@ const RAM_SIZE_ADDR: usize = 0x149;
 const KBYTE: usize = 1024;
 const MBYTE: usize = 1024 * 1024;
 
-pub fn cartridge_factory(base: usize, binary: Vec<u8>) -> Box<dyn Device> {
-    identify_cartridge_type(binary[CARTRIDGE_TYPE_ADDR]);
-    identify_rom_size(binary[ROM_SIZE_ADDR]);
-    identify_ram_size(binary[RAM_SIZE_ADDR]);
-    Box::new(Memory::new(base, binary, Permission::ReadOnly))
+struct Type0 {
+    rom: Memory
 }
 
-fn identify_cartridge_type(code: u8) {
+impl Type0 {
+    fn new(base: usize, binary: Vec<u8>) -> Box<Type0> {
+        Box::new(Type0 {
+            rom: Memory::new(base, binary, Permission::ReadOnly),
+        })
+    }
+}
+
+impl Device for Type0 {
+    fn load(&self, addr: u16) -> Result<u8, ()> {
+        self.rom.load(addr)
+    }
+    fn store(&mut self, addr: u16, value: u8) -> Result<(), ()> {
+        self.rom.store(addr, value)
+    }
+}
+
+pub fn cartridge_factory(base: usize, binary: Vec<u8>) -> Box<dyn Device> {
+    let code = binary[CARTRIDGE_TYPE_ADDR];
     match code {
-        0x0 => info!("ROM ONLY"),
-        0x12 => info!("ROM+MBC3+RAM"),
-        0x1 => info!("ROM+MBC1"),
-        0x13 => info!("ROM+MBC3+RAM+BATT"),
-        0x2 => info!("ROM+MBC1+RAM"),
-        0x19 => info!("ROM+MBC5"),
-        0x3 => info!("ROM+MBC1+RAM+BATT"),
-        0x1A => info!("ROM+MBC5+RAM"),
-        0x5 => info!("ROM+MBC2"),
-        0x1B => info!("ROM+MBC5+RAM+BATT"),
-        0x6 => info!("ROM+MBC2+BATTERY"),
-        0x1C => info!("ROM+MBC5+RUMBLE"),
-        0x8 => info!("ROM+RAM"),
-        0x1D => info!("ROM+MBC5+RUMBLE+SRAM"),
-        0x9 => info!("ROM+RAM+BATTERY"),
-        0x1E => info!("ROM+MBC5+RUMBLE+SRAM+BATT"),
-        0xB => info!("ROM+MMM01"),
-        0x1F => info!("Pocket Camera"),
-        0xC => info!("ROM+MMM01+SRAM"),
-        0xFD => info!("Bandai TAMA5"),
-        0xD => info!("ROM+MMM01+SRAM+BATT"),
-        0xFE  => info!("Hudson HuC3"),
-        0xF => info!("ROM+MBC3+TIMER+BATT"),
-        0xFF  => info!("Hudson HuC1"),
-        0x10 => info!("ROM+MBC3+TIMER+RAM+BATT"),
-        0x11 => info!("ROM+MBC3"),
-        _ => error!("Unknow type"),
+        0x0 => Type0::new(base, binary),
+        _ => panic!("Not supporting tyupe"),
     }
 }
 
