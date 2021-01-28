@@ -47,23 +47,28 @@ struct Type1 {
     rom_mapping: Rc<RefCell<Memory>>,
 }
 
+fn new_rom_banks(base: usize, bank_num: usize, binary: Vec<u8>) -> Vec<Rc<RefCell<Memory>>>    {
+    let mut rom_bank = Vec::with_capacity(bank_num - 1);
+
+    let rom_bank_addr_base = base + BANK_SIZE;
+    for i in 1..bank_num {
+        let mut rom_slice = vec![0; BANK_SIZE];
+        let start = i * BANK_SIZE;
+        let end = start + BANK_SIZE;
+        rom_slice.clone_from_slice(&binary[start..end]);
+        let bank = Rc::new(RefCell::new(Memory::new(rom_bank_addr_base, rom_slice, Permission::ReadOnly)));
+        rom_bank.push(bank);
+    }
+    rom_bank
+}
+
 impl Type1 {
     fn new(base: usize, binary: Vec<u8>) -> Box<Type1> {
         let mut rom = vec![0; BANK_SIZE];
         rom.clone_from_slice(&binary[0..BANK_SIZE]);
         let rom = Memory::new(base, rom, Permission::ReadOnly);
         let bank_num = identify_rom_size(binary[ROM_SIZE_ADDR]);
-        let mut rom_bank = Vec::with_capacity(bank_num);
-
-        let rom_bank_addr_base = base + BANK_SIZE;
-        for i in 1..bank_num {
-            let mut rom_slice = vec![0; BANK_SIZE];
-            let start = i * BANK_SIZE;
-            let end = start + BANK_SIZE;
-            rom_slice.clone_from_slice(&binary[start..end]);
-            let bank = Rc::new(RefCell::new(Memory::new(rom_bank_addr_base, rom_slice, Permission::ReadOnly)));
-            rom_bank.push(bank);
-        }
+        let rom_bank = new_rom_banks(base, bank_num, binary);
         let rom_mapping = rom_bank[0].clone();
         Box::new(Type1 {
             rom,
